@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DataPulse — Analytics Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0d0f;
+    --surface: #141416;
+    --surface2: #1c1c1f;
+    --border: rgba(255,255,255,0.07);
+    --text: #f0f0f0;
+    --muted: #666;
+    --accent: #5b8dee;
+    --green: #3ecf8e;
+    --red: #f04d4d;
+    --amber: #f5a623;
+    --font: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    min-height: 100vh;
+    display: flex;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: 220px;
+    min-height: 100vh;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 28px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .logo {
+    font-size: 17px;
+    font-weight: 500;
+    letter-spacing: -0.5px;
+    color: var(--text);
+    padding: 0 12px 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+  }
+
+  .logo span { color: var(--accent); }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--muted);
+    transition: all 0.15s;
+    font-size: 13px;
+  }
+
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: rgba(91,141,238,0.12); color: var(--accent); }
+
+  .nav-icon {
+    width: 16px;
+    height: 16px;
+    opacity: 0.7;
+  }
+
+  .sidebar-bottom {
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* Main */
+  .main {
+    flex: 1;
+    padding: 32px 36px;
+    overflow-y: auto;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+  }
+
+  .topbar h1 {
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: -0.3px;
+  }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .badge {
+    background: rgba(91,141,238,0.15);
+    color: var(--accent);
+    font-size: 12px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-family: var(--mono);
+  }
+
+  .avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #5b8dee, #3ecf8e);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  /* Metric cards */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent-color, var(--accent));
+    opacity: 0.6;
+  }
+
+  .metric-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .metric-value {
+    font-size: 28px;
+    font-weight: 500;
+    letter-spacing: -1px;
+    font-family: var(--mono);
+  }
+
+  .metric-change {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    margin-top: 8px;
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+
+  .metric-change.up { background: rgba(62,207,142,0.1); color: var(--green); }
+  .metric-change.down { background: rgba(240,77,77,0.1); color: var(--red); }
+
+  /* Charts row */
+  .charts-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .card-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .card-subtitle {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .period-tabs {
+    display: flex;
+    gap: 4px;
+  }
+
+  .tab {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--muted);
+    transition: all 0.15s;
+    border: none;
+    background: none;
+    font-family: var(--font);
+  }
+
+  .tab.active {
+    background: var(--surface2);
+    color: var(--text);
+  }
+
+  /* Table */
+  .table-row {
+    display: grid;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th {
+    text-align: left;
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 400;
+    padding: 0 0 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  td {
+    padding: 14px 0;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+  }
+
+  .bar-bg {
+    background: var(--surface2);
+    border-radius: 4px;
+    height: 6px;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: var(--accent);
+  }
+
+  /* Donut legend */
+  .legend {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+  }
+
+  .legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+
+  .legend-label {
+    display: flex;
+    align-items: center;
+    color: var(--muted);
+  }
+
+  .legend-val {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .metric-card, .card { animation: fadeUp 0.4s ease both; }
+  .metric-card:nth-child(1) { animation-delay: 0.05s; }
+  .metric-card:nth-child(2) { animation-delay: 0.1s; }
+  .metric-card:nth-child(3) { animation-delay: 0.15s; }
+  .metric-card:nth-child(4) { animation-delay: 0.2s; }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="logo">Data<span>Pulse</span></div>
+
+  <div class="nav-item active">
+    <svg class="nav-icon" viewBox="0 0 16 16" fill="none"><rect x="1" y="8" width="4" height="7" rx="1" fill="currentColor"/><rect x="6" y="4" width="4" height="11" rx="1" fill="currentColor" opacity=".6"/><rect x="11" y="1" width="4" height="14" rx="1" fill="currentColor" opacity=".3"/></svg>
+    Overview
+  </div>
+  <div class="nav-item">
+    <svg class="nav-icon" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    Real-time
+  </div>
+  <div class="nav-item">
+    <svg class="nav-icon" viewBox="0 0 16 16" fill="none"><path d="M2 10l4-4 3 3 5-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Revenue
+  </div>
+  <div class="nav-item">
+    <svg class="nav-icon" viewBox="0 0 16 16" fill="none"><circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M10 10l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    Audience
+  </div>
+  <div class="nav-item">
+    <svg class="nav-icon" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>
+    Reports
+  </div>
+
+  <div class="sidebar-bottom">
+    <div class="nav-item">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Profile
+    </div>
+    <div class="nav-item">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Settings
+    </div>
+  </div>
+</aside>
+
+<!-- Main content -->
+<main class="main">
+  <div class="topbar">
+    <div>
+      <h1>Overview</h1>
+      <div style="font-size:12px;color:var(--muted);margin-top:3px;">March 2026 — all channels</div>
+    </div>
+    <div class="topbar-right">
+      <div class="badge">Live</div>
+      <div class="avatar">KA</div>
+    </div>
+  </div>
+
+  <!-- Metric cards -->
+  <div class="metrics">
+    <div class="metric-card" style="--accent-color: #5b8dee;">
+      <div class="metric-label">Total Revenue</div>
+      <div class="metric-value">$84,320</div>
+      <div class="metric-change up">+12.4%</div>
+    </div>
+    <div class="metric-card" style="--accent-color: #3ecf8e;">
+      <div class="metric-label">Active Users</div>
+      <div class="metric-value">24,810</div>
+      <div class="metric-change up">+8.1%</div>
+    </div>
+    <div class="metric-card" style="--accent-color: #f5a623;">
+      <div class="metric-label">Conversion Rate</div>
+      <div class="metric-value">3.68%</div>
+      <div class="metric-change down">-0.3%</div>
+    </div>
+    <div class="metric-card" style="--accent-color: #f04d4d;">
+      <div class="metric-label">Avg. Session</div>
+      <div class="metric-value">4m 22s</div>
+      <div class="metric-change up">+18s</div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-row">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Revenue over time</div>
+          <div class="card-subtitle">Daily earnings this month</div>
+        </div>
+        <div class="period-tabs">
+          <button class="tab">7d</button>
+          <button class="tab active">30d</button>
+          <button class="tab">90d</button>
+        </div>
+      </div>
+      <div style="position:relative;height:220px;">
+        <canvas id="revenueChart"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Traffic sources</div>
+          <div class="card-subtitle">This month</div>
+        </div>
+      </div>
+      <div style="position:relative;height:160px;">
+        <canvas id="donutChart"></canvas>
+      </div>
+      <div class="legend">
+        <div class="legend-item">
+          <div class="legend-label"><div class="legend-dot" style="background:#5b8dee;"></div>Organic</div>
+          <div class="legend-val">42%</div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-label"><div class="legend-dot" style="background:#3ecf8e;"></div>Direct</div>
+          <div class="legend-val">28%</div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-label"><div class="legend-dot" style="background:#f5a623;"></div>Social</div>
+          <div class="legend-val">18%</div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-label"><div class="legend-dot" style="background:#f04d4d;"></div>Referral</div>
+          <div class="legend-val">12%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top pages table -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Top pages</div>
+        <div class="card-subtitle">By pageviews this month</div>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Page</th>
+          <th>Views</th>
+          <th>Unique visitors</th>
+          <th>Bounce rate</th>
+          <th style="width:120px;">Share</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>/dashboard</td>
+          <td style="font-family:var(--mono);">12,840</td>
+          <td style="font-family:var(--mono);">9,210</td>
+          <td style="font-family:var(--mono);color:var(--green);">24%</td>
+          <td><div class="bar-bg"><div class="bar-fill" style="width:88%;"></div></div></td>
+          <td><span class="status-dot" style="background:var(--green);"></span>Active</td>
+        </tr>
+        <tr>
+          <td>/pricing</td>
+          <td style="font-family:var(--mono);">8,540</td>
+          <td style="font-family:var(--mono);">6,820</td>
+          <td style="font-family:var(--mono);color:var(--amber);">41%</td>
+          <td><div class="bar-bg"><div class="bar-fill" style="width:62%;"></div></div></td>
+          <td><span class="status-dot" style="background:var(--green);"></span>Active</td>
+        </tr>
+        <tr>
+          <td>/features</td>
+          <td style="font-family:var(--mono);">6,220</td>
+          <td style="font-family:var(--mono);">4,990</td>
+          <td style="font-family:var(--mono);color:var(--amber);">38%</td>
+          <td><div class="bar-bg"><div class="bar-fill" style="width:48%;"></div></div></td>
+          <td><span class="status-dot" style="background:var(--green);"></span>Active</td>
+        </tr>
+        <tr>
+          <td>/blog/getting-started</td>
+          <td style="font-family:var(--mono);">4,110</td>
+          <td style="font-family:var(--mono);">3,780</td>
+          <td style="font-family:var(--mono);color:var(--red);">62%</td>
+          <td><div class="bar-bg"><div class="bar-fill" style="width:32%;"></div></div></td>
+          <td><span class="status-dot" style="background:var(--amber);"></span>Review</td>
+        </tr>
+        <tr>
+          <td>/contact</td>
+          <td style="font-family:var(--mono);">2,850</td>
+          <td style="font-family:var(--mono);">2,610</td>
+          <td style="font-family:var(--mono);color:var(--green);">29%</td>
+          <td><div class="bar-bg"><div class="bar-fill" style="width:22%;"></div></div></td>
+          <td><span class="status-dot" style="background:var(--green);"></span>Active</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<script>
+const labels = ['Mar 1','Mar 3','Mar 5','Mar 7','Mar 9','Mar 11','Mar 13','Mar 15','Mar 17','Mar 19','Mar 21','Mar 23','Mar 25','Mar 27'];
+const data = [2100,2450,2200,2800,3100,2700,3300,3600,3200,3800,4100,3900,4400,4800];
+
+new Chart(document.getElementById('revenueChart'), {
+  type: 'line',
+  data: {
+    labels,
+    datasets: [{
+      data,
+      borderColor: '#5b8dee',
+      backgroundColor: 'rgba(91,141,238,0.08)',
+      borderWidth: 2,
+      tension: 0.4,
+      fill: true,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      pointHoverBackgroundColor: '#5b8dee'
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: {
+      backgroundColor: '#1c1c1f',
+      borderColor: 'rgba(255,255,255,0.1)',
+      borderWidth: 1,
+      titleColor: '#666',
+      bodyColor: '#f0f0f0',
+      callbacks: { label: ctx => ' $' + ctx.parsed.y.toLocaleString() }
+    }},
+    scales: {
+      x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#555', font: { size: 11 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#555', font: { size: 11 }, callback: v => '$' + (v/1000).toFixed(0) + 'k' } }
+    }
+  }
+});
+
+new Chart(document.getElementById('donutChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Organic', 'Direct', 'Social', 'Referral'],
+    datasets: [{
+      data: [42, 28, 18, 12],
+      backgroundColor: ['#5b8dee', '#3ecf8e', '#f5a623', '#f04d4d'],
+      borderWidth: 0,
+      hoverOffset: 4
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '72%',
+    plugins: { legend: { display: false }, tooltip: {
+      backgroundColor: '#1c1c1f',
+      borderColor: 'rgba(255,255,255,0.1)',
+      borderWidth: 1,
+      titleColor: '#666',
+      bodyColor: '#f0f0f0'
+    }}
+  }
+});
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', function() {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+</script>
+</body>
+</html>
